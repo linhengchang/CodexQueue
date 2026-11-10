@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-web/
+data/
+task/
+todo/
+.DS_Store
+*.log
+.build-cache/
+Auto Work.app/Contents/MacOS/AutoWork
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.auto-work-worktrees/

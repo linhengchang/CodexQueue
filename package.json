@@ -1,0 +1,49 @@
+{
+  "name": "auto-work",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.mjs",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc -p tsconfig.server.json && tsc -p tsconfig.json && vite build",
+    "start": "node scripts/start.mjs",
+    "server": "node dist/server/index.js",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "desktop": "electron .",
+    "build:launcher": "/bin/zsh scripts/build-launcher.sh"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "node-schedule": "^2.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "lucide-react": "^0.468.0",
+    "zod": "^3.24.2",
+    "cross-spawn": "^7.0.6"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
+    "@types/node-schedule": "^2.1.7",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^39.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "@types/cross-spawn": "^6.0.6"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "description": "Codex CLI 本地开发任务排队与调度面板，支持独立 worktree、图片需求、每日定时和 Review 报告",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linhengchang/CodexQueue.git"
+  },
+  "homepage": "https://github.com/linhengchang/CodexQueue#readme",
+  "bugs": {
+    "url": "https://github.com/linhengchang/CodexQueue/issues"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "project": "Auto Work",
+  "verifiedAt": "2026-11-10",
+  "platform": "macOS",
+  "checks": [
+    "TypeScript server and web passed",
+    "Vite production build passed",
+    "Electron UI task CRUD and schedule view inspected",
+    "Window close exits launcher and HTTP service",
+    "11 integration tests passed, including image forwarding, upload API, cleanup protection and code preservation",
+    "Screenshot paste uploaded and displayed a thumbnail in isolated browser preview",
+    "Storage paths and usage inspected in isolated browser preview"
+  ],
+  "limits": [
+    "Real model development pipeline not run; tests use simulated Codex",
+    "Windows behavior implemented but not verified on Windows",
+    "Browser extension file-picker automation blocked by file-URL permission; paste upload and binary API verified instead"
+  ]
+}
