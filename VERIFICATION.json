@@ -1,15 +1,18 @@
 {
   "project": "Auto Work",
-  "verifiedAt": "2026-11-10",
+  "verifiedAt": "2026-11-11",
   "platform": "macOS",
   "checks": [
     "TypeScript server and web passed",
     "Vite production build passed",
     "Electron UI task CRUD and schedule view inspected",
     "Window close exits launcher and HTTP service",
-    "11 integration tests passed, including image forwarding, upload API, cleanup protection and code preservation",
     "Screenshot paste uploaded and displayed a thumbnail in isolated browser preview",
-    "Storage paths and usage inspected in isolated browser preview"
+    "Storage paths and usage inspected in isolated browser preview",
+    "Desktop history restore and image references inspected; task/action alignment checked",
+    "Desktop open-directory and worktree-root buttons verified in Finder",
+    "25 integration tests passed, including title search, local start-date boundaries, task-level pagination, page clamping and visible-result grouping",
+    "30-item isolated browser preview verified pagination and combined title/date filtering; desktop interface refreshed"
   ],
   "limits": [
     "Real model development pipeline not run; tests use simulated Codex",

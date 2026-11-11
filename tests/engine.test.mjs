@@ -102,7 +102,17 @@ test('HTTP mutations require a session token, reject external origins, and close
     f.settings.tasks = [f.task('GOOD_TASK')];
     assert.equal((await fetch(server.origin + '/api/run-now', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Auto-Work-Token': data.token }, body: JSON.stringify(f.settings) })).status, 202);
     await settled(server.engine);
-    await server.scheduleTick(); await settled(server.engine); const count = server.store.batches.length;
+    assert.equal(server.store.settings.tasks.length, 0, 'manual run consumes the pending queue');
+    const headers = { 'Content-Type': 'application/json', 'X-Auto-Work-Token': data.token };
+    assert.equal((await fetch(server.origin + '/api/schedule', { method: 'POST', headers, body: JSON.stringify(f.settings) })).status, 200);
+    assert.equal(server.store.settings.tasks.length, 0, 'scheduled tasks move to their own snapshot');
+    assert.equal(server.store.schedule.snapshot.tasks[0].rawPrompt, 'GOOD_TASK');
+    const future = { ...f.settings, tasks: [f.task('FUTURE_TASK')] };
+    await fetch(server.origin + '/api/settings', { method: 'PUT', headers, body: JSON.stringify(future) });
+    await server.scheduleTick(); await settled(server.engine);
+    assert.equal(server.store.batches[0].tasks[0].rawPrompt, 'GOOD_TASK', 'daily run uses the independent snapshot');
+    assert.equal(server.store.settings.tasks[0].rawPrompt, 'FUTURE_TASK', 'daily run cannot consume a future manual task');
+    const count = server.store.batches.length;
     await server.scheduleTick(); assert.equal(server.store.batches.length, count, 'daily tick must not duplicate a run');
   } finally { await server.close(); }
   await assert.rejects(fetch(server.origin + '/api/status'));
@@ -117,4 +127,15 @@ test('image references survive persistence and reach every Codex stage without b
   assert.equal(calls.length, 3);
   for (const args of calls) { assert.equal(args[args.indexOf('--image') + 1], storage.imagePath(image.id)); assert.ok(args.includes('--ephemeral')); }
   assert.ok(calls[1].includes('--add-dir')); assert.equal(calls[0].includes('--add-dir'), false);
+});
+
+test('accepted manual run consumes pending tasks and keeps an independent historical snapshot', async () => {
+  const f = await fixture(); f.settings.tasks = [f.task('GOOD_TASK')];
+  const prompt = f.settings.tasks[0].rawPrompt;
+  const batch = await f.engine.start(f.settings);
+  assert.equal(f.store.settings.tasks.length, 0);
+  f.settings.tasks[0].rawPrompt = 'changed later';
+  assert.equal(batch.tasks[0].rawPrompt, prompt);
+  await settled(f.engine);
+  assert.equal(f.store.batches.length, 1); assert.equal(batch.tasks[0].rawPrompt, prompt);
 });

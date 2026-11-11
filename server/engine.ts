@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { command, CommandError } from './process.js';
 import { Store } from './store.js';
 import { Storage } from './storage.js';
+import { findCodex } from './codex.js';
 import type { Auth, Batch, TaskRun, Settings, Config } from '../shared/types.js';
 
 export const settingsSchema = z.object({
@@ -25,21 +26,33 @@ export class Engine extends EventEmitter {
   activeBatch?: string;
   closing = false;
   starting = false;
-  constructor(public store: Store, public codex = process.env.AUTO_WORK_CODEX || 'codex') { super(); }
+  private requestedCodex: string;
+  constructor(public store: Store, public codex = process.env.AUTO_WORK_CODEX || 'codex') { super(); this.requestedCodex = codex; }
   changed() { this.emit('change'); }
   async persist() { await this.store.save(); this.changed(); }
   async auth(): Promise<Auth> {
     const result: Auth = { installed: false, loggedIn: false, version: '', method: '', supported: false, message: '', checkedAt: new Date().toISOString() };
     try {
+      this.codex = await findCodex(this.requestedCodex);
+      result.installed = true; result.binaryPath = this.codex;
+    } catch (e) { result.status = 'not-found'; result.message = (e as Error).message; return result; }
+    try {
       const version = await command(this.codex, ['--version'], { timeout: 10_000 });
-      result.installed = true; result.version = version.stdout.trim();
+      result.version = version.stdout.trim();
       const help = await command(this.codex, ['exec', '--help'], { timeout: 10_000 });
-      result.supported = ['--sandbox', '--json', '--image', '--ephemeral'].every(flag => help.stdout.includes(flag));
+      result.supported = ['--sandbox', '--json', '--image', '--ephemeral', '--output-schema'].every(flag => help.stdout.includes(flag));
+    } catch (e) { result.status = 'check-failed'; result.message = '已找到 Codex CLI，但版本或参数检查失败：' + (e as Error).message; return result; }
+    try {
       const login = await command(this.codex, ['login', 'status'], { timeout: 15_000 });
       const message = (login.stdout + login.stderr).split('\n').filter(s => !s.startsWith('WARNING:')).join('\n').trim();
       result.loggedIn = true; result.method = /chatgpt/i.test(message) ? 'ChatGPT' : /api key/i.test(message) ? 'API Key' : '已登录';
+      result.status = result.supported ? 'ready' : 'unsupported';
       result.message = result.supported ? '凭据检查通过，尚未验证网络和额度' : '当前 CLI 缺少必要参数，请升级 Codex';
-    } catch (e) { result.message = result.installed ? '登录检查未通过，请在终端执行 codex login；' + (e as Error).message : '未找到 Codex CLI，请先安装并登录'; }
+    } catch (e) {
+      const signedOut = e instanceof CommandError && /not logged in|not signed in|logged out/i.test(e.output);
+      result.status = signedOut ? 'signed-out' : 'check-failed';
+      result.message = signedOut ? 'Codex 尚未登录，请在同一系统用户下执行 codex login，然后点击检查登录' : '已找到 Codex CLI，但登录状态检查失败。请检查应用和终端的 CODEX_HOME、系统凭据存储权限是否一致；' + (e as Error).message;
+    }
     return result;
   }
   async project(root: string, baseRef = 'HEAD') {
@@ -71,6 +84,7 @@ export class Engine extends EventEmitter {
       const id = randomUUID();
       const batch: Batch = { id, createdAt: new Date().toISOString(), status: 'running', source, config: structuredClone(settings.config), baseCommit: '', tasks: settings.tasks.map(t => ({ ...structuredClone(t), status: 'queued', stage: '等待执行', sessionIds: [], checks: [] })) };
       this.store.batches.unshift(batch); this.activeBatch = id;
+      if (source === 'manual') this.store.settings = { config: structuredClone(settings.config), tasks: [] };
       await this.persist();
       void this.runBatch(batch).catch(async e => {
         batch.status = 'failed'; batch.error = (e as Error).message; batch.endedAt = new Date().toISOString(); this.activeBatch = undefined; await this.persist();

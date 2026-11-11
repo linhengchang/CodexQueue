@@ -10,6 +10,7 @@ import { Engine, settingsSchema } from './engine.js';
 import { stopAll } from './process.js';
 import { Storage, MAX_IMAGE_BYTES } from './storage.js';
 import { z } from 'zod';
+import { worktreeDirectory } from './worktree-directory.js';
 
 export async function startServer(options: { root?: string; port?: number; codex?: string; trash?: (file: string) => Promise<void> } = {}) {
   const root = options.root || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -50,25 +51,26 @@ export async function startServer(options: { root?: string; port?: number; codex
   app.get('/api/auth', route(async (_req, res) => res.json(await engine.auth())));
   app.get('/api/project', route(async (req, res) => res.json(await engine.project(String(req.query.root || ''), String(req.query.baseRef || 'HEAD')))));
   app.put('/api/settings', route(async (req, res) => { store.settings = settingsSchema.parse(req.body); await store.save(); register(); engine.changed(); res.json({ ok: true }); }));
-  app.post('/api/run-now', route(async (req, res) => { const settings = settingsSchema.parse(req.body); store.settings = settings; const batch = await engine.start(settings); register(); res.status(202).json({ id: batch.id }); }));
+  app.post('/api/run-now', route(async (req, res) => { const settings = settingsSchema.parse(req.body); const batch = await engine.start(settings); register(); res.status(202).json({ id: batch.id }); }));
+  app.get('/api/batches/:id/directory', route(async (req, res) => res.json({ path: await worktreeDirectory(store, req.params.id, req.query.taskId ? String(req.query.taskId) : undefined) })));
   app.post('/api/batches/:id/cancel', route(async (req, res) => { await engine.cancel(req.params.id); res.json({ ok: true }); }));
   const scheduleTick = async () => {
     const date = new Date(); const today = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
     if (store.schedule.lastDate === today) return;
     // A missed run is recorded rather than silently overlapping a previous batch.
     store.schedule.lastDate = today; store.schedule.lastError = ''; await store.save();
-    try { if (storage.busy) throw new Error('正在清理存储，已跳过本次定时'); await engine.start(structuredClone(store.settings), 'schedule'); }
+    try { if (storage.busy) throw new Error('正在清理存储，已跳过本次定时'); if (!store.schedule.snapshot) throw new Error('请重新设置每日定时任务'); await engine.start(structuredClone(store.schedule.snapshot), 'schedule'); }
     catch (e) { store.schedule.lastError = (e as Error).message; await store.save(); engine.changed(); }
   };
   const register = () => {
     timer?.cancel(); timer = null;
     if (store.schedule.enabled) {
-      const [hour, minute] = store.settings.config.scheduleTime.split(':').map(Number);
+      const [hour, minute] = (store.schedule.snapshot?.config.scheduleTime || store.settings.config.scheduleTime).split(':').map(Number);
       timer = schedule.scheduleJob({ hour, minute, tz: store.schedule.timezone }, () => { void scheduleTick().catch(e => { store.schedule.lastError = String(e); engine.changed(); }); });
     }
   };
-  app.post('/api/schedule', route(async (req, res) => { const settings = settingsSchema.parse(req.body); if (!settings.tasks.length) throw new Error('请先新增任务'); store.settings = settings; store.schedule.enabled = true; store.schedule.lastError = ''; await store.save(); register(); engine.changed(); res.json({ ok: true }); }));
-  app.delete('/api/schedule', route(async (_req, res) => { store.schedule.enabled = false; await store.save(); register(); engine.changed(); res.json({ ok: true }); }));
+  app.post('/api/schedule', route(async (req, res) => { const settings = settingsSchema.parse(req.body); if (!settings.tasks.length) throw new Error('请先新增任务'); store.settings = { config: structuredClone(settings.config), tasks: [] }; store.schedule.enabled = true; store.schedule.snapshot = structuredClone(settings); store.schedule.lastError = ''; await store.save(); register(); engine.changed(); res.json({ ok: true }); }));
+  app.delete('/api/schedule', route(async (_req, res) => { store.schedule.enabled = false; store.schedule.snapshot = null; await store.save(); register(); engine.changed(); res.json({ ok: true }); }));
   app.get('/api/events', (_req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' }); res.write(': connected\n\n'); streams.add(res);
     const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15_000);

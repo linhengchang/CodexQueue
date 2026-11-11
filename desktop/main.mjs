@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startServer } from '../dist/server/index.js';
+import { worktreeDirectory } from '../dist/server/worktree-directory.js';
 
 app.setName('Auto Work');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,6 +31,12 @@ else {
         if (event.sender !== window.webContents || new URL(event.senderFrame.url).origin !== instance.origin) return null;
         const result = await dialog.showOpenDialog(window, { title: '选择目标项目', properties: ['openDirectory'] });
         return result.canceled ? null : result.filePaths[0];
+      });
+      ipcMain.handle('open-worktree', async (event, batchId, taskId) => {
+        if (event.sender !== window.webContents || new URL(event.senderFrame.url).origin !== instance.origin) throw new Error('面板会话无效');
+        const directory = await worktreeDirectory(instance.store, batchId, taskId);
+        const error = await shell.openPath(directory); if (error) throw new Error(error);
+        return directory;
       });
       ipcMain.handle('open-storage', async (event, category) => {
         if (event.sender !== window.webContents || new URL(event.senderFrame.url).origin !== instance.origin) return;

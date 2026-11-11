@@ -30,7 +30,7 @@ export function command(program: string, args: string[], options: { cwd?: string
       // A command must not leave a background server behind after its stage ends.
       if (process.platform !== 'win32') killTree(child);
       if (stopped) reject(new CommandError('任务已取消或超时', null, stderr));
-      else if (code !== 0) reject(new CommandError(`${program} 执行失败（${code}）`, code, stderr || stdout));
+      else if (code !== 0) reject(new CommandError(`${program} 执行失败（${code}）`, code, [stderr, stdout].filter(Boolean).join('\n')));
       else resolve({ stdout, stderr, code: 0 });
     });
   });

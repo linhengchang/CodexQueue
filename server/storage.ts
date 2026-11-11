@@ -47,7 +47,7 @@ export class Storage {
     await this.store.save(); return this.store.attachments.find(i => i.id === id)!;
   }
   referenced(excludeIds: string[] = []) {
-    return new Set([...excludeIds, ...this.store.settings.tasks.flatMap(t => t.images || []), ...this.store.batches.flatMap(b => b.tasks.flatMap(t => t.images || []))]);
+    return new Set([...excludeIds, ...this.store.settings.tasks.flatMap(t => t.images || []), ...(this.store.schedule.snapshot?.tasks.flatMap(t => t.images || []) || []), ...this.store.batches.flatMap(b => b.tasks.flatMap(t => t.images || []))]);
   }
   async files(root: string): Promise<{ path: string; bytes: number }[]> {
     let info;
