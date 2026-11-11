@@ -12,9 +12,10 @@ import { Storage, MAX_IMAGE_BYTES } from './storage.js';
 import { z } from 'zod';
 import { worktreeDirectory } from './worktree-directory.js';
 
-export async function startServer(options: { root?: string; port?: number; codex?: string; trash?: (file: string) => Promise<void> } = {}) {
+export async function startServer(options: { root?: string; resourceRoot?: string; dataRoot?: string; port?: number; codex?: string; trash?: (file: string) => Promise<void> } = {}) {
   const root = options.root || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-  const store = new Store(root); await store.init(); const engine = new Engine(store, options.codex);
+  const resourceRoot = options.resourceRoot || root;
+  const store = new Store(options.dataRoot || root); await store.init(); const engine = new Engine(store, options.codex);
   const storage = new Storage(store, options.trash);
   const token = randomBytes(24).toString('hex');
   const app = express(); app.disable('x-powered-by');
@@ -86,7 +87,7 @@ export async function startServer(options: { root?: string; port?: number; codex
     } catch (e: any) { if (e.code === 'ENOENT') res.json({ content: '尚未生成', path: file }); else throw e; }
   }));
   app.use('/api', (_req, res) => res.status(404).json({ error: '接口不存在' }));
-  app.use(express.static(path.join(root, 'dist-web'), { setHeaders: res => res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'") }));
+  app.use(express.static(path.join(resourceRoot, 'dist-web'), { setHeaders: res => res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'") }));
   app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => { res.status(400).json({ error: err.issues?.map((i: any) => i.message).join('；') || err.message || '操作失败' }); });
   await new Promise<void>((resolve, reject) => { server = app.listen(options.port ?? Number(process.env.PORT || 3080), '127.0.0.1', resolve); server.once('error', reject); });
   const address = server!.address(); origin = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 3080}`; register();

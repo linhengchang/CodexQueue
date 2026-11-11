@@ -6,7 +6,7 @@ CodexQueue 是一个本地可视化开发任务调度工具，桌面窗口名称
 
 适合一次配置 2～3 个相互独立的页面或组件需求，运行期间自主处理普通技术选择，之后由你人工审核和合入代码。
 
-> 这是需要本地 Node.js、Git 和 Codex CLI 的源码项目，不是免安装应用。当前已在 macOS 验证；Windows 适配已实现，尚未实机验证。
+> 支持源码启动和独立 Electron App 打包。独立 App 自带界面与服务运行时；开发任务仍需要本机 Git、Codex CLI，以及业务项目使用的 Node.js / 包管理器。macOS 已验证；Windows 尚未实机验证。
 
 [安装与启动](#安装与启动) · [怎么使用](#怎么使用) · [功能清单](#功能清单) · [需求与设计](docs/requirements.md) · [详细使用说明](docs/usage.md)
 
@@ -46,6 +46,24 @@ codex login status
 如果已经登录，直接检查状态即可。浏览器里登录了 ChatGPT，并不代表 Codex CLI 已经登录。详见 [OpenAI 官方 CLI 说明](https://learn.chatgpt.com/docs/codex/cli) 和 [认证说明](https://learn.chatgpt.com/docs/auth)。
 
 ## 安装与启动
+
+### 完整打包为独立应用
+
+```bash
+npm ci
+npm run dist:mac   # 在 macOS 构建 DMG 和 ZIP
+# Windows 上执行：npm run dist:win
+```
+
+产物保存在 `release/`。macOS 将 DMG 中的 **Auto Work.app** 拖到“应用程序”，之后可直接双击启动，无需保留源码目录。`npm run pack` 只生成可运行的应用目录，便于本地验证。构建默认针对当前机器架构；没有配置发布证书和公证时，产物用于本地测试，不代表已签名发行版。Windows 安装包配置已提供，需在 Windows 实机验证。
+
+完整 App 的数据根目录固定为 macOS 的 `~/Library/Application Support/Auto Work/`，Windows 的 `%APPDATA%/Auto Work/`。其中仍使用 `data/`、`task/`、`todo/`，存储管理显示实际路径并提供 **打开目录**。更新或移动 App 不会改变数据目录。源码启动继续使用项目根目录保存数据。
+
+首次启动完整 App 时，可以选择旧源码项目目录导入数据。请先关闭旧程序；导入仅复制 `data/`、`task/`、`todo/`，保留原文件与业务 worktree 路径，排除旧回收目录，拒绝覆盖已有数据或跟随符号链接。导入后每日定时暂停，检查环境后再重新设置。选择“全新开始”后不会自动合并旧记录。
+
+存储清理方式与源码版一致：按历史批次清理方案、日志、截图和 Review，并清理未引用图片；保留配置、待执行任务和业务代码。桌面模式移到系统废纸篓，清空废纸篓才释放空间。不要把整个 `data/` 当成临时缓存删除。
+
+以下是源码运行方式，根目录中的 Swift 启动器与完整打包 App 是两个不同入口。
 
 ### 1. 获取项目并安装依赖
 
@@ -209,7 +227,10 @@ CodexQueue/
 npm run dev             # 后端 3080 + Vite 5173
 npm run build           # 前后端类型检查与生产构建
 npm test                # 构建并执行集成测试
-npm run build:launcher  # 仅 macOS，编译原生 .app 入口
+npm run build:launcher  # 仅 macOS，编译依赖源码目录的启动器
+npm run pack            # 生成独立应用目录
+npm run dist:mac        # 生成 macOS DMG / ZIP
+npm run dist:win        # 在 Windows 构建 NSIS 安装包
 ```
 
 开发模式在终端按 `Ctrl+C` 停止前后端；桌面模式通过关闭窗口停止服务。

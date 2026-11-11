@@ -14,3 +14,5 @@ Auto Work.app/Contents/MacOS/AutoWork
 *.pem
 *.key
 .auto-work-worktrees/
+
+release/

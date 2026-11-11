@@ -12,11 +12,28 @@
     "Desktop history restore and image references inspected; task/action alignment checked",
     "Desktop open-directory and worktree-root buttons verified in Finder",
     "25 integration tests passed, including title search, local start-date boundaries, task-level pagination, page clamping and visible-result grouping",
-    "30-item isolated browser preview verified pagination and combined title/date filtering; desktop interface refreshed"
+    "30-item isolated browser preview verified pagination and combined title/date filtering; desktop interface refreshed",
+    "29 tests passed, including packaged resource/data isolation, copy-only migration, symlink rejection, tool PATH discovery and cleanup",
+    "macOS arm64 standalone App, DMG and ZIP built; archive checked to exclude user data, tests and Git metadata",
+    "Packaged app smoke test passed: UI and image serving from ASAR, native trash cleanup, Codex discovery with Finder-style PATH, clean exit and released HTTP port"
   ],
   "limits": [
     "Real model development pipeline not run; tests use simulated Codex",
     "Windows behavior implemented but not verified on Windows",
-    "Browser extension file-picker automation blocked by file-URL permission; paste upload and binary API verified instead"
-  ]
+    "Browser extension file-picker automation blocked by file-URL permission; paste upload and binary API verified instead",
+    "macOS package has no distribution signing identity or Apple notarization; Windows installer not built or tested"
+  ],
+  "packaging": {
+    "at": "2026-11-11T03:54:54.689Z",
+    "platform": "darwin",
+    "arch": "arm64",
+    "archiveExcludesPersonalData": true,
+    "uiServedFromArchive": true,
+    "nativeTrashCleanup": true,
+    "codexDetectedFromMinimalPath": true,
+    "exitedAndReleasedPort": true,
+    "tests": 29,
+    "windows": "not tested",
+    "signing": "not configured"
+  }
 }
